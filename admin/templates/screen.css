@@ -1,0 +1,13 @@
+/* Cluster administration templates */
+
+#sidebar .cluster>a { background-image: url('images/chart_organisation.png'); }
+#sidebar .instance>a { background-image: url('images/computer.png'); }
+
+#crumb p.trail a.clusters {
+	padding-left: 20px;
+	background-image: url('images/color_swatch.png');
+}
+#crumb p.trail a.cluster {
+	padding-left: 20px;
+	background-image: url('images/chart_organisation.png');
+}

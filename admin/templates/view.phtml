@@ -1,0 +1,36 @@
+<?php require($templates_path . 'admin/header.php'); ?>
+<h2><?php e($object['title']); ?></h2>
+
+
+<h2>Instances</h2>
+<div class="item-list-container">
+
+	<div class="item-list">
+		<table>
+			<thead>
+				<tr>
+					<th scope="col">Name</th>
+					<th scope="col">Title</th>
+					<th scope="col">Last checked in</th>
+					<th scope="col">Status</th>
+				</tr>
+			</thead>
+			<tbody>
+			<?php
+			$odd = true;
+			foreach($instances as $inst)
+			{
+				echo '<tr class="' . ($odd ? 'odd':'even') . '">';
+				echo '<td>' . _e($inst['name']) . '</td>';
+				echo '<td>' . _e($inst['title']) . '</td>';
+				echo '</tr>';
+				$odd = !$odd;
+			}		
+			?>
+			</tbody>
+		</table>
+	</div>
+
+</div>
+
+<?php require($templates_path . 'admin/footer.php'); ?>
