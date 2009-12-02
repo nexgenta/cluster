@@ -26,9 +26,12 @@ class ClusterAdminPage extends AdminPage
 		$this->useGlitter('source-list');
 		$this->vars['page_type'] = 'cluster-admin';
 		$this->vars['clusters'] = $this->model->clusters();
+		$this->vars['hosts'] = $this->model->hosts();
 		$this->vars['source_list_cookie'] = 'cluster';
 		$this->vars['source_list'] = array(
 			'clusters' => array('name' => 'Clusters', 'children' => array(
+			)),
+			'hosts' => array('name' => 'Hosts', 'children' => array(
 			)),
 		);
 		foreach($this->vars['clusters'] as $name => $cluster)
@@ -49,5 +52,15 @@ class ClusterAdminPage extends AdminPage
 				);
 			}
 		}
+		foreach($this->vars['hosts'] as $name => $info)
+		{
+			$this->vars['source_list']['hosts']['children'][$name] = array(
+				'name' => $name,
+				'link' => $this->request->base . 'host/-/' . $name,
+				'class' => 'host',
+				'children' => array(),
+			);			
+		}
+		
 	}
 }

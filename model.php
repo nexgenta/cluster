@@ -57,8 +57,10 @@ class ClusterFileModel extends Model
 {
 	protected $clusters = array();
 	protected $inst = array();
+	protected $hosts = array();
 	public $instanceName;
 	public $clusterName;
+	public $hostName;
 	
 	public function __construct($args)
 	{
@@ -84,6 +86,18 @@ class ClusterFileModel extends Model
 			trigger_error('Current instance ' . INSTANCE_NAME . ' is not defined in any cluster (define INSTANCE_NAME to override the default or modify ' . $path . ' to add it to a cluster)', E_USER_ERROR);
 		}
 		$this->clusterName = $this->inst[INSTANCE_NAME]['cluster'];
+		$this->hostName = $this->inst[INSTANCE_NAME]['host'];
+	}
+	
+	public function hosts()
+	{
+		return $this->hosts;
+	}
+	
+	public function instancesOnHost($host)
+	{
+		if(isset($this->hosts[$host])) return $this->hosts[$host]['instances'];
+		return null;
 	}
 	
 	public function clusters()
@@ -170,6 +184,9 @@ class ClusterFileModel extends Model
 				{
 					trigger_error('Instance ' . $iinfo['name'] . ' is defined more than once; the most recent definition will be used', E_USER_NOTICE);
 				}
+				if(!isset($iinfo['host'])) $iinfo['host'] = $iinfo['name'];
+				if(!isset($this->hosts[$iinfo['host']])) $this->hosts[$iinfo['host']] = array('name' => $iinfo['host'], 'instances' => array());
+				$this->hosts[$iinfo['host']]['instances'][] = $iinfo['name'];
 				$iinfo['cluster'] = $info['name'];
 				$this->inst[$iinfo['name']] = $iinfo;
 				$ilist[$iinfo['name']] = $iinfo['name'];

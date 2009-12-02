@@ -1,13 +1,10 @@
 /* Cluster administration templates */
 
-#sidebar .cluster>a { background-image: url('images/chart_organisation.png'); }
-#sidebar .instance>a { background-image: url('images/computer.png'); }
+#sidebar .clusters>a, #crumb p.trail a.clusters { background-image: url('images/color_swatch.png'); }
+#sidebar .cluster>a, #crumb p.trail a.cluster { background-image: url('images/chart_organisation.png'); }
+#sidebar .instance>a, #crumb p.trail a.instance { background-image: url('images/computer.png'); }
+#sidebar .host>a, #crumb p.trail a.host { background-image: url('images/monitor.png'); }
 
-#crumb p.trail a.clusters {
+#crumb p.trail a.clusters, #crumb p.trail a.cluster, #crumb p.trail a.instance, #crumb p.trail a.host {
 	padding-left: 20px;
-	background-image: url('images/color_swatch.png');
-}
-#crumb p.trail a.cluster {
-	padding-left: 20px;
-	background-image: url('images/chart_organisation.png');
 }
