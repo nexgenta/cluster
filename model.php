@@ -33,10 +33,16 @@ uses('model');
 
 if(!defined('INSTANCE_NAME')) define('INSTANCE_NAME', php_uname('n'));
 
+if(!defined('CLUSTER_HEARTBEAT_THRESHOLD')) define('CLUSTER_HEARTBEAT_THRESHOLD', 60);
+
 class ClusterModel extends Model
 {
 	public $writeable = true;
-	
+	protected $heartbeat;
+	public $instanceName;
+	public $clusterName;
+	public $hostName;
+
 	public static function getInstance($args = null, $className = null)
 	{
 		if(null === $args) $args = array();
@@ -50,17 +56,43 @@ class ClusterModel extends Model
 			}
 		}
 		return Model::getInstance($args, $className);
-	}	
+	}
+	
+	public function clusterStatus($cluster)
+	{
+		if(!defined('HEARTBEAT_IRI'))
+		{
+			return array('tag' => 'unknown', 'description' => 'Unknown');
+		}
+		require_once(APPS_ROOT . 'heartbeat/model.php');
+		if(!$this->heartbeat) $this->heartbeat = HeartbeatModel::getInstance();
+		$instances = $this->instancesInCluster($cluster);
+		$online = 0;
+		$now = time();
+		foreach($instances as $inst)
+		{
+			$status = $this->heartbeat->lastPulse($cluster, $inst['name']);
+			if(!$status) continue;
+			if($status['unixtime'] + CLUSTER_HEARTBEAT_THRESHOLD < $now) continue;
+			$online++;
+		}
+		if(!$online)
+		{
+			return array('tag' => 'offline', 'description' => 'No instances are online');
+		}
+		if($online == count($instances))
+		{
+			return array('tag' => 'online', 'description' => 'All instances are online');
+		}
+		return array('tag' => 'alert', 'description' => 'Some instances are offline');
+	}
 }
 
-class ClusterFileModel extends Model
+class ClusterFileModel extends ClusterModel
 {
 	protected $clusters = array();
 	protected $inst = array();
 	protected $hosts = array();
-	public $instanceName;
-	public $clusterName;
-	public $hostName;
 	
 	public function __construct($args)
 	{
