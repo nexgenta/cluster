@@ -9,6 +9,7 @@ class ClusterOverview extends ClusterAdminPage
 
 	protected function getObject()
 	{
+		parent::getObject();
 		if(isset($this->request->objects[0]))
 		{
 			if($this->request->objects[0] == 'new')
@@ -24,6 +25,13 @@ class ClusterOverview extends ClusterAdminPage
 			$r->process($this->request);
 			return false;
 		}
+		foreach($this->clusters as $cluster => $info)
+		{
+			$status = $this->model->clusterStatus($cluster);
+			$this->clusters[$cluster]['class'] = $status['tag'];
+			$this->clusters[$cluster]['status'] = $status['description'];
+		}
 		return true;
 	}
+	
 }

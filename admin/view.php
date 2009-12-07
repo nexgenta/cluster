@@ -5,8 +5,10 @@ require_once(dirname(__FILE__) . '/app.php');
 class ClusterView extends ClusterAdminPage
 {
 	protected $templateName = 'view.phtml';
+
 	protected function getObject()
 	{
+		parent::getObject();
 		$cluster = $this->request->objects[0];
 		if(!($this->object = $this->model->cluster($cluster)))
 		{

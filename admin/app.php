@@ -19,14 +19,23 @@ class ClusterAdminApp extends App
 class ClusterAdminPage extends AdminPage
 {
 	protected $modelClass = 'ClusterModel';
-
+	protected $clusters;
+	protected $hosts;
+	
+	protected function getObject()
+	{
+		$this->clusters = $this->model->clusters();
+		$this->hosts = $this->model->hosts();
+		return true;
+	}
+	
 	protected function assignTemplate()
 	{
 		parent::assignTemplate();
 		$this->useGlitter('source-list');
 		$this->vars['page_type'] = 'cluster-admin';
-		$this->vars['clusters'] = $this->model->clusters();
-		$this->vars['hosts'] = $this->model->hosts();
+		$this->vars['clusters'] = $this->clusters;
+		$this->vars['hosts'] = $this->hosts;
 		$this->vars['source_list_cookie'] = 'cluster';
 		$this->vars['source_list'] = array(
 			'clusters' => array('name' => 'Clusters', 'children' => array(
@@ -34,7 +43,7 @@ class ClusterAdminPage extends AdminPage
 			'hosts' => array('name' => 'Hosts', 'children' => array(
 			)),
 		);
-		foreach($this->vars['clusters'] as $name => $cluster)
+		foreach($this->clusters as $name => $cluster)
 		{
 			$this->vars['source_list']['clusters']['children'][$name] = array(
 				'name' => $cluster['title'],

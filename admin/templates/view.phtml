@@ -1,8 +1,6 @@
 <?php require($templates_path . 'admin/header.php'); ?>
 <h2><?php e($object['title']); ?></h2>
 
-
-<h2>Instances</h2>
 <div class="item-list-container">
 
 	<div class="item-list">
@@ -21,7 +19,7 @@
 			foreach($instances as $inst)
 			{
 				echo '<tr class="' . ($odd ? 'odd':'even') . '">';
-				echo '<td>' . _e($inst['name']) . '</td>';
+				echo '<td class="instance-name">' . _e($inst['name']) . '</td>';
 				echo '<td>' . _e($inst['title']) . '</td>';
 				echo '</tr>';
 				$odd = !$odd;

@@ -1,0 +1,57 @@
+DROP TABLE IF EXISTS `cluster_fs_object`;
+
+CREATE TABLE `cluster_fs_object` (
+	`cluster_name` varchar(64) NOT NULL,
+	`fsobject_uuid` varchar(36) NOT NULL,
+	`fsobject_parent` varchar(36) default NULL,
+	`fsobject_name` varchar(64) NOT NULL,
+	`fsobject_cname` varchar(64) NOT NULL,
+	`fsobject_dev` bigint unsigned default NULL,
+	`fsobject_ino` bigint unsigned default NULL,
+	`fsobject_mode` bigint unsigned NOT NULL,
+	`fsobject_nlink` int unsigned NOT NULL default 1,
+	`fsobject_uid` bigint unsigned default NULL,
+	`fsobject_gid` bigint unsigned default NULL,
+	`fsobject_rdev` bigint unsigned default NULL,
+	`fsobject_size` bigint unsigned default NULL,
+	`fsobject_ctime` DATETIME default NULL,
+	`fsobject_mtime` DATETIME default NULL,
+	`fsobject_atime` DATETIME default NULL,
+	`fsobject_blksize` int default NULL,
+	`fsobject_blocks` bigint unsigned default NULL,
+	`fsobject_creator_scheme` varchar(32) default NULL,
+	`fsobject_creator_uuid` varchar(36) default NULL,
+	`fsobject_modifier_scheme` varchar(32) default NULL,
+	`fsobject_modifier_uuid` varchar(36) default NULL,
+	`fsobject_deleted` ENUM('N','Y') NOT NULL default 'N',
+	`fsobject_metadata` TEXT default NULL,
+	`fsobject_virtual` ENUM('N','Y') NOT NULL default 'Y',
+	PRIMARY KEY (`cluster_name`, `fsobject_uuid`),
+	UNIQUE (`cluster_name`, `fsobject_parent`, `fsobject_cname`),
+	INDEX (`cluster_name`),
+	INDEX (`fsobject_uuid`),
+	INDEX (`fsobject_parent`),
+	INDEX (`fsobject_cname`),
+	INDEX (`fsobject_creator_scheme`),
+	INDEX (`fsobject_creator_uuid`),
+	INDEX (`fsobject_modifier_scheme`),
+	INDEX (`fsobject_modifier_uuid`),
+	INDEX (`fsobject_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+DROP TABLE IF EXISTS `cluster_fs_instance`;
+
+CREATE TABLE `cluster_fs_instance` ( 
+	`cluster_name` varchar(64) NOT NULL,
+	`instance_name` varchar(64) NOT NULL,
+	`fsobject_uuid` varchar(36) NOT NULL,
+	`fsinstance_path` text default NULL,
+	`fsinstance_active` ENUM('N','Y') NOT NULL default 'N',
+	`fsinstance_created` DATETIME NOT NULL,
+	`fsinstance_modified` DATETIME NOT NULL,
+	PRIMARY KEY (`cluster_name`, `instance_name`, `fsobject_uuid`),
+	INDEX (`cluster_name`),
+	INDEX (`instance_name`),
+	INDEX (`fsobject_uuid`),
+	INDEX (`fsinstance_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

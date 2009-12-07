@@ -8,3 +8,13 @@
 #crumb p.trail a.clusters, #crumb p.trail a.cluster, #crumb p.trail a.instance, #crumb p.trail a.host {
 	padding-left: 20px;
 }
+
+td.cluster-name, td.instance-name {
+	padding-left: 24px !important;
+	background-repeat: no-repeat;
+	background-position: 4px 50%;
+	min-height: 16px;
+}
+tr.offline>td.cluster-name { background-image: url('images/exclamation.png'); }
+tr.alert>td.cluster-name { background-image: url('images/error.png'); }
+tr.online>td.cluster-name { background-image: url('images/accept.png'); }

@@ -71,7 +71,7 @@ class ClusterModel extends Model
 		$now = time();
 		foreach($instances as $inst)
 		{
-			$status = $this->heartbeat->lastPulse($cluster, $inst['name']);
+			$status = $this->heartbeat->lastPulse($inst['host']);
 			if(!$status) continue;
 			if($status['unixtime'] + CLUSTER_HEARTBEAT_THRESHOLD < $now) continue;
 			$online++;

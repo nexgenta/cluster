@@ -47,7 +47,7 @@ class ClusterListCommand extends CommandLine
 {
 	protected $modelClass = 'ClusterModel';
 	
-	protected function perform___CLI__()
+	public function main($args)
 	{
 		$clusters = $this->model->clusters();
 		foreach($clusters as $c)

@@ -1,3 +1,35 @@
 <?php require($templates_path . 'admin/header.php'); ?>
 
+<h2>Clusters</h2>
+<div class="item-list-container">
+
+	<div class="item-list">
+		<table>
+			<thead>
+				<tr>
+					<th scope="col">Name</th>
+					<th scope="col">Title</th>
+					<th scope="col">Status</th>
+				</tr>
+			</thead>
+			<tbody>
+			<?php
+			$odd = true;
+			foreach($clusters as $cluster)
+			{
+				echo '<tr class="' . ($odd ? 'odd ':'even ') . $cluster['class'] . '">';
+				echo '<td class="cluster-name"><a href="' . $request->base . '-/' . _e($cluster['name']) . '">' . _e($cluster['name']) . '</a></td>';
+				echo '<td>' . _e($cluster['title']) . '</td>';
+				echo '<td>' . _e($cluster['status']) . '</td>';
+				echo '</tr>';
+				$odd = !$odd;
+			}		
+			?>
+			</tbody>
+		</table>
+	</div>
+
+</div>
+
+
 <?php require($templates_path . 'admin/footer.php'); ?>
