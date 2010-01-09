@@ -20,12 +20,9 @@ class ClusterFS extends Model
 	protected $instanceName;
 	protected $root;
 	
-	public static function getInstance($args = null, $className = null)
+	public static function getInstance($args = null, $className = null, $defaultDbIri = null)
 	{
-		if(null === $args) $args = array();
-		if(!isset($args['db'])) $args['db'] = CLUSTERFS_IRI;
-		if(null === $className) $className = 'ClusterFS';
-		return Model::getInstance($args, $className);
+		return Model::getInstance($args, ($className ? $className : 'ClusterFS'), ($defaultDbIri ? $defaultDbIri : CLUSTERFS_IRI));
 	}
 	
 	public function __construct($args)

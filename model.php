@@ -43,10 +43,10 @@ class ClusterModel extends Model
 	public $clusterName;
 	public $hostName;
 
-	public static function getInstance($args = null, $className = null)
+	public static function getInstance($args = null, $className = null, $defaultDbIri = null)
 	{
 		if(null === $args) $args = array();
-		if(!isset($args['db'])) $args['db'] = CLUSTER_IRI;
+		if(!isset($args['db'])) $args['db'] = ($defaultDbIri ? $defaultDbIri : CLUSTER_IRI);
 		if(null === $className)
 		{
 			$className = 'ClusterModel';
@@ -55,7 +55,7 @@ class ClusterModel extends Model
 				$className = 'ClusterFileModel';
 			}
 		}
-		return Model::getInstance($args, $className);
+		return Model::getInstance($args, $className, null);
 	}
 	
 	public function clusterStatus($cluster)
