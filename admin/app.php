@@ -13,6 +13,7 @@ class ClusterAdminApp extends App
 	{
 		parent::__construct();
 		$this->routes['__NONE__'] = array('class' => 'ClusterOverview', 'file' => 'admin/overview.php', 'require' => 'com.nexgenta.admin.cluster');
+		$this->routes['host'] = array('class' => 'ClusterHost', 'file' => 'admin/host.php', 'require' => 'com.nexgenta.admin.cluster');
 	}
 }
 
@@ -37,6 +38,10 @@ class ClusterAdminPage extends AdminPage
 		$this->vars['clusters'] = $this->clusters;
 		$this->vars['hosts'] = $this->hosts;
 		$this->vars['source_list_cookie'] = 'cluster';
+		if(isset($this->vars['global_nav']['cluster']))
+		{
+			$this->vars['global_nav']['cluster']['class'] .= ' active';
+		}				
 		$this->vars['source_list'] = array(
 			'clusters' => array('name' => 'Clusters', 'children' => array(
 			)),

@@ -1,10 +1,10 @@
 <?php
 
-uses('model', 'uuid');
+uses('model', 'uuid', 'url');
 
 require_once(dirname(__FILE__) . '/model.php');
 
-/* cluster://[<cluster-name>]/[<uuid>/][<uuid>/...][<uuid>]
+/* cluster://[<cluster-name>]/[<name>|<uuid>/][<name>|<uuid>/...][<name>|<uuid>]
  *
  * e.g.:
  *
@@ -46,9 +46,13 @@ class ClusterFS extends Model
 			}
 			else
 			{
-				if(!($iri = parse_url($iri)))
+				if(!($iri = URL::parse($iri)))
 				{
 					return null;
+				}
+				if(!isset($iri['host']))
+				{
+					$iri['host'] = $this->clusterName;				
 				}
 			}
 		}
@@ -68,9 +72,10 @@ class ClusterFS extends Model
 		return $iri;
 	}
 	
-	protected function traverse($path)
+	protected function traverse($path, $returnIRI = false)
 	{
-		$entry =  array('cluster_name' => $path['host'], 'fsobject_parent' => null, 'fsobject_uuid' => null, 'fsobject_name' => null, 'fsobject_mode' => 0040755, 'fsobject_virtual' => 'Y', 'fsobject_deleted' => 'N');
+		$entry = array('cluster_name' => $path['host'], 'fsobject_parent' => null, 'fsobject_uuid' => null, 'fsobject_name' => null, 'fsobject_mode' => 0040755, 'fsobject_virtual' => 'Y', 'fsobject_deleted' => 'N');
+		$root = $iri = 'cluster://' . $path['host'];
 		foreach($path['pathcomp'] as $el)
 		{
 			if(!strlen($el)) continue;
@@ -78,6 +83,19 @@ class ClusterFS extends Model
 			{
 				return null;
 			}
+			if(isset($entry['cluster_name']))
+			{
+				$iri .= $entry['cluster_name'] . '/';
+			}
+			else
+			{
+				$iri .= $entry['fsobject_uuid'] . '/';			
+			}
+		}
+		if($returnIRI)
+		{
+			if(!strcmp($root, $iri)) $iri .= '/';
+			$entry['iri'] = $iri;
 		}
 		return $entry;
 	}
@@ -187,18 +205,19 @@ class ClusterFS extends Model
 				'fsobject_modifier_uuid' => $ownerUUID,
 				'fsobject_deleted' => 'N',
 				'fsobject_virtual' => ($virtual ? 'Y' : 'N'),
+				'fsobject_remote' => null,
 			));
 		}
 		while(!$this->db->commit());
 		return $this->db->row('SELECT * FROM {cluster_fs_object} WHERE "cluster_name" = ? AND "fsobject_uuid" = ?', $parent['cluster_name'], $uuid);
 	}
 	
-	public function entry($path)
+	public function entry($path, $returnIRI = false)
 	{
 		if(!($path = $this->parse($path))) return null;
-		return $this->traverse($path);
+		return $this->traverse($path, $returnIRI);
 	}
-
+	
 	public function opendir($path)
 	{
 		if(!($path = $this->parse($path))) return null;
@@ -213,23 +232,173 @@ class ClusterFS extends Model
 		return $this->db->query('SELECT "fsobject_uuid", "fsobject_name" FROM {cluster_fs_object} WHERE "cluster_name" = ? AND "fsobject_parent" = ?', $path['cluster_name'], $path['fsobject_uuid']);
 	}
 
+	public function autoName($path, $name)
+	{
+		if(!strlen($name))
+		{
+			trigger_error('ClusterFS: Attempt to rename ' . $path . ' to an empty name', E_USER_NOTICE);
+			return false;
+		}
+		$name = explode('.', trim($name), 2);
+		$base = $name[0];
+		if(isset($name[1]))
+		{
+			$ext = '.' . $name[1];
+		}
+		else
+		{
+			$ext = '';
+		}
+		$c = 0;
+		if(!($path = $this->parse($path))) return null;
+		if(!($path = $this->traverse($path, true)))
+		{
+			return null;
+		}
+		if($path['fsobject_uuid'] === null)
+		{
+			trigger_error('ClusterFS: Attempt to rename the root directory denied', E_USER_NOTICE);
+			return false;
+		}
+		do
+		{
+			if($c)
+			{
+				$name = $base . '-' . $c . $ext;
+				$cname = strtolower($name);
+			}
+			else
+			{			
+				$name = $base . $ext;
+				$cname = strtolower($name);
+			}
+			$exists = false;
+			do
+			{
+				$this->db->begin();
+				if($path['fsobject_parent'] === null)
+				{
+					$row = $this->db->row('SELECT * FROM {cluster_fs_object} WHERE "cluster_name" = ? AND "fsobject_parent" IS NULL AND "fsobject_cname" = ?', $path['cluster_name'], $cname);
+				}
+				else
+				{
+					$row = $this->db->row('SELECT * FROM {cluster_fs_object} WHERE "cluster_name" = ? AND "fsobject_parent" = ? AND "fsobject_cname" = ?', $path['cluster_name'], $path['fsobject_parent'], $cname);			
+				}
+				if($row && strcmp($row['fsobject_uuid'], $path['fsobject_uuid']))
+				{
+					$c++;
+					$exists = true;
+					$this->db->rollback();
+					break;
+				}
+				$this->db->exec('UPDATE {cluster_fs_object} SET "fsobject_name" = ?, "fsobject_cname" = ? WHERE "cluster_name" = ? AND "fsobject_uuid" = ?', $name, $cname, $path['cluster_name'], $path['fsobject_uuid']);
+			}
+			while(!$this->db->commit());
+			if($exists)
+			{
+				continue;
+			}
+			return true;
+		}
+		while(true);
+	}
+
 	public function adopt($path, $parent = null, $ownerScheme = null, $ownerUUID = null)
 	{
-		if(!($info = stat($path)))
+		if(stream_is_local($path))
+		{	
+			if(!($info = stat($path)))
+			{
+				return null;
+			}
+			$path = realpath($path);
+		}
+		if(!($parent = $this->parse($parent))) return null;
+		if(!($parent = $this->traverse($parent, true)))
 		{
 			return null;
-		}
-		if(!($parent = $this->traverse($parent)))
+		}		
+		if($parent['fsobject_virtual'] != 'Y')
 		{
+			trigger_error('ClusterFS: Cannot adopt a file into a non-virtual container', E_USER_ERROR);
 			return null;
 		}
+		$baseIRI = $parent['iri'];
+		if(substr($baseIRI, -1) != '/') $baseIRI .= '/';
+		
+		if(stream_is_local($path))
+		{
+			$path = str_replace('//', '/', $path);
+			while(substr($path, -1) == '/') $path = substr($path, 0, -1);
+			if(!strlen($path)) $path = '/';
+			if(!($uuid = $this->_adopt($path, $info, $parent, null, $ownerScheme, $ownerUUID)))
+			{
+				return false;
+			}
+			$iri = $baseIRI . $uuid;
+			$this->autoName($iri, basename($path));
+		}
+		else
+		{
+			if(!($uuid = $this->_adoptRemote($path, $parent, $ownerScheme, $ownerUUID)))
+			{
+				return false;
+			}
+			$iri = $baseIRI . $uuid;			
+			if(@$info = parse_url($path))
+			{
+				if(isset($info['path']) && strlen($info['path']))
+				{
+					$base = basename($info['path']);
+				}
+				else
+				{
+					$base = '';
+				}
+				if(strlen($base))
+				{
+					$this->autoName($iri, basename($info['path']));
+				}
+				else if(isset($info['host']) && strlen($info['host']))
+				{
+					$this->autoName($iri, $info['host']);
+				}
+			}
+		}
+		$me = $this->db->row('SELECT * FROM {cluster_fs_object} WHERE "cluster_name" = ? AND "fsobject_uuid" = ?', $this->clusterName, $uuid);
+		print_r($me);
+		$iri = $baseIRI;
+		if(isset($me['fsobject_name']) && strlen($me['fsobject_name']))
+		{
+			$iri .= $me['fsobject_name'];
+		}
+		else
+		{
+			$iri .= $me['fsobject_uuid'];		
+		}
+		return $iri;
+	}
+	
+	protected function _adopt($path, $info, $parent, $name, $ownerScheme, $ownerUUID)
+	{
 		$uuid = UUID::generate();
+		$name = trim($name);
+		if(strlen($name))
+		{
+			$cname = strtolower($name);
+		}
+		else
+		{
+			$name = $cname = null;
+		}
 		$this->db->insert('cluster_fs_object', array(
-			'cluster_name' => $parent['cluster'],
+			'cluster_name' => $parent['cluster_name'],
 			'fsobject_uuid' => $uuid,
-			'fsobject_parent' => $parent['uuid'],
-			'fsobject_dev' => 0,
-			'fsobject_ino' => 0,
+			'fsobject_parent' => $parent['fsobject_uuid'],
+			'fsobject_name' => $name,
+			'fsobject_cname' => $cname,
+			'fsobject_dev' => $info['dev'],
+			'fsobject_ino' => $info['ino'],
 			'fsobject_mode' => $info['mode'],
 			'fsobject_nlink' => 1,
 			'fsobject_uid' => $info['uid'],
@@ -245,10 +414,24 @@ class ClusterFS extends Model
 			'fsobject_creator_uuid' => $ownerUUID,
 			'fsobject_modifier_scheme' => $ownerScheme,
 			'fsobject_modifier_uuid' => $ownerUUID,
+			'fsobject_virtual' => 'N',
 			'fsobject_deleted' => 'N',
+			'fsobject_remote' => null,
 		));
+		$me = $this->db->row('SELECT * FROM {cluster_fs_object} WHERE "cluster_name" = ? AND "fsobject_uuid" = ?', $this->clusterName, $uuid);
+		$iri = $parent['iri'];
+		if(substr($iri, -1) != '/') $iri .= '/';
+		if(isset($me['fsobject_name']))
+		{
+			$iri .= $me['fsobject_name'];
+		}
+		else
+		{
+			$iri .= $me['fsobject_uuid'];		
+		}
+		$me['iri'] = $iri;
 		$this->db->insert('cluster_fs_instance', array(
-			'instance_name' => $instance,
+			'instance_name' => $this->instanceName,
 			'cluster_name' => $this->clusterName,
 			'fsobject_uuid' => $uuid,
 			'fsinstance_path' => $path,
@@ -256,7 +439,140 @@ class ClusterFS extends Model
 			'@fsinstance_created' => $this->db->now(),
 			'@fsinstance_modified' => $this->db->now(),
 		));
-		return 'cluster://'. $this->clusterName . '/' . $uuid;
+		if(is_dir($path))
+		{
+			$d = opendir($path);
+			while(($entry = readdir($d)))
+			{
+				if(!strcmp($entry, '.') || !strcmp($entry, '..')) continue;
+				$info = stat($path . '/' . $entry);
+				if(!($this->_adopt($path . '/' . $entry, $info, $me, $entry, $ownerScheme, $ownerUUID)))
+				{
+					closedir($d);
+					$this->recursiveRemove($me);			
+					return false;
+				}
+			}
+			closedir($d);
+		}
+		return $uuid;
+	}
+
+	protected function _adoptRemote($iri, $parent, $ownerScheme, $ownerUUID)
+	{
+		$uuid = UUID::generate();
+		$this->db->insert('cluster_fs_object', array(
+			'cluster_name' => $parent['cluster_name'],
+			'fsobject_uuid' => $uuid,
+			'fsobject_parent' => $parent['fsobject_uuid'],
+			'fsobject_name' => null,
+			'fsobject_cname' => null,
+			'fsobject_dev' => 0,
+			'fsobject_ino' => 0,
+			'fsobject_mode' => 0120666,
+			'fsobject_nlink' => 1,
+			'fsobject_uid' => 0,
+			'fsobject_gid' => 0,
+			'fsobject_rdev' => 0,
+			'fsobject_size' => 0,
+			'@fsobject_ctime' => $this->db->now(),
+			'@fsobject_mtime' => $this->db->now(),
+			'fsobject_atime' => null,
+			'fsobject_blksize' => 4096,
+			'fsobject_blocks' => 0,
+			'fsobject_creator_scheme' => $ownerScheme,
+			'fsobject_creator_uuid' => $ownerUUID,
+			'fsobject_modifier_scheme' => $ownerScheme,
+			'fsobject_modifier_uuid' => $ownerUUID,
+			'fsobject_virtual' => 'N',
+			'fsobject_deleted' => 'N',
+			'fsobject_remote' => $iri,
+		));
+		return $uuid;
+	}
+	
+	public function localPath($iri)
+	{
+		global $CLUSTERFS_TRANSPORT;
+		
+		if(!($iri = $this->parse($iri)))
+		{
+			return null;
+		}
+		if(!($iri = $this->traverse($iri)))
+		{
+			return null;
+		}
+		if(($row = $this->db->row('SELECT * FROM {cluster_fs_instance} WHERE "cluster_name" = ? AND "instance_name" = ? AND  "fsobject_uuid" = ?', $iri['cluster_name'], $this->instanceName, $iri['fsobject_uuid'])))
+		{
+			if($row['fsinstance_active'] == 'Y')
+			{
+				return $row['fsinstance_path'];
+			}
+		}
+		if(($rrow = $this->db->rows('SELECT * FROM {cluster_fs_instance} WHERE "cluster_name" = ? AND "fsobject_uuid" = ? AND "fsinstance_active" = ?', $iri['cluster_name'], $iri['fsobject_uuid'], 'Y')))
+		{
+			foreach($rrow as $remote)
+			{
+				if(!($inst = $this->cluster->instanceInCluster($remote['instance_name'], $remote['cluster_name'])))
+				{
+					continue;
+				}
+				$host = $inst['host'];
+				$transport = null;
+				if(isset($CLUSTERFS_TRANSPORT[$host]))
+				{
+					$transport = $CLUSTERFS_TRANSPORT[$host];
+				}
+				else
+				{
+					$host = $this->cluster->host($host);
+					if(isset($host['transport']))
+					{
+						$transport = $host['transport'];
+					}
+				}
+				if(!$transport) continue;
+				if(($localFile = $this->transport($remote, $inst, $transport)))
+				{
+					echo "Have $localFile!\n";
+					return $localFile;
+				}
+				else
+				{
+					return null;
+				}
+			}
+		}
+	}
+	
+	protected function transport($remoteFsInst, $instance, $transport)
+	{
+		if(!defined('CLUSTERFS_ROOT'))
+		{
+			trigger_error('ClusterFS: Cannot transport resources because CLUSTERFS_ROOT is not defined', E_USER_NOTICE);
+			return false;
+		}
+		$base = CLUSTERFS_ROOT;
+		if(!file_exists($base)) mkdir($base);
+		$base .= '/' . $remoteFsInst['cluster_name'];
+		if(!file_exists($base)) mkdir($base);
+		$base .= '/' . $remoteFsInst['fsobject_uuid'];
+		$source = $transport['scheme'] . '://' . $transport['base'] . $remoteFsInst['fsinstance_path'];
+		if(isset($transport['options']))
+		{
+			$options = $transport['options'];
+		}
+		else
+		{
+			$options = null;
+		}
+		uses('netcopy');
+		if(NetCopy::copy($source, $base, $options))
+		{
+			return $base;
+		}
+		return null;
 	}
 }
 
@@ -295,7 +611,7 @@ class ClusterFSHandler
 	{
 		if(($row = $this->dir->next()))
 		{
-			if(isset($row['fsobject_name'])) return $row['fsobject_name'];
+			if(isset($row['fsobject_name']) && strlen($row['fsobject_name'])) return $row['fsobject_name'];
 			return $row['fsobject_uuid'];
 		}
 		return null;
@@ -313,11 +629,70 @@ class ClusterFSHandler
 	
 	public function stream_open($path, $mode, $options, &$opened_path)
 	{
-		self::init();		
+		self::init();
+		if(!($opened_path = self::$model->localPath($path)))
+		{
+			if($options & STREAM_REPORT_ERRORS)
+			{
+				trigger_error('ClusterFS: Unable to locate resource for ' . $path, E_USER_WARNING);
+			}
+			return false;
+		}
+		if(!($this->stream = fopen($opened_path, $mode)))
+		{
+			return false;
+		}
+		return true;
 	}
 	
 	public function stream_close()
 	{
+		fclose($this->stream);
+	}
+	
+	public function stream_cast($as)
+	{
+		return $this->stream;
+	}
+	
+	public function stream_eof()
+	{
+		return feof($this->stream);
+	}
+	
+	public function stream_flush()
+	{
+		return fflush($this->stream);
+	}
+	
+	public function stream_lock($operation)
+	{
+		return flock($this->stream, $operation);
+	}
+	
+	public function stream_read($count)
+	{
+		return fread($this->stream, $count);
+	}
+	
+	public function stream_write($data)
+	{
+		return fwrite($this->stream, $data);
+	}
+	
+	public function stream_seek($offset, $whence = SEEK_SET)
+	{
+		return fseek($this->stream, $offset, $whence);
+	}
+	
+	public function stream_stat()
+	{
+		return fstat($this->stream);
+	}
+	
+	public function stream_tell()
+	{
+		return ftell($this->stream);
 	}
 	
 	public function mkdir($path, $mode, $options)
@@ -369,4 +744,30 @@ class ClusterFSHandler
 		}
 		return $stat;
 	}
+	
+	public function readlink($path)
+	{
+		self::init();
+		if(!($info = self::$model->entry($path)))
+		{
+			return false;
+		}
+		if(!($info['fsobject_mode'] & 0120000))
+		{
+			trigger_error('ClusterFS::readlink(): ' . $path . ' is not a symbolic link', E_USER_WARNING);
+			return false;
+		}
+		return $info['fsobject_remote'];
+	}
+	
+	public function realpath($iri)
+	{
+		self::init();
+		if(!($info = self::$model->entry($iri, true)))
+		{
+			return null;
+		}
+		return $info['iri'];
+	}	
+	
 }

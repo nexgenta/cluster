@@ -32,6 +32,7 @@
 uses('error');
 
 require_once(dirname(__FILE__) . '/model.php');
+require_once(dirname(__FILE__) . '/clusterfs.php');
 
 class ClusterCLI extends App
 {
@@ -40,6 +41,7 @@ class ClusterCLI extends App
 		parent::__construct();
 
 		$this->sapi['cli']['list'] = array('class' => 'ClusterListCommand', 'description' => 'List the defined clusters');
+		$this->sapi['cli']['adopt'] = array('class' => 'ClusterAdoptCommand', 'description' => 'Adopt a pathname into ClusterFS');
 	}
 }
 
@@ -56,3 +58,42 @@ class ClusterListCommand extends CommandLine
 		}
 	}
 }
+
+class ClusterAdoptCommand extends CommandLine
+{
+	protected $modelClass = 'ClusterFS';
+	
+	protected function checkargs(&$args)
+	{
+		if(count($args) < 1)
+		{
+			return $this->error(Error::NO_OBJECT, null, null, 'Usage: adopt LOCAL-FILE [PARENT]');
+		}
+		if(count($args) > 2)
+		{
+			return $this->error(Error::BAD_REQUEST, null, null, 'Usage: adopt LOCAL-FILE [PARENT]');
+		}
+		return true;
+	}
+
+	public function main($args)
+	{
+		$parent = $scheme = $uuid = null;
+		if(isset($args[1]))
+		{
+			$parent = $args[1];
+		}
+		if(isset($this->session->user))
+		{
+			$scheme = $this->session->user['scheme'];
+			$uuid = $this->session->user['uuid'];
+		}
+		if(!($iri = $this->model->adopt($args[0], $parent, $scheme, $uuid)))
+		{
+			return 1;
+		}
+		echo "Adopted as $iri\n";
+		return 0;
+	}
+}
+

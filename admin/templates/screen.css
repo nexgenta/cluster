@@ -15,6 +15,13 @@ td.cluster-name, td.instance-name {
 	background-position: 4px 50%;
 	min-height: 16px;
 }
-tr.offline>td.cluster-name { background-image: url('images/exclamation.png'); }
-tr.alert>td.cluster-name { background-image: url('images/error.png'); }
-tr.online>td.cluster-name { background-image: url('images/accept.png'); }
+tr.offline>td.cluster-name { background-image: url('images/grey16.png'); }
+tr.alert>td.cluster-name { background-image: url('images/yellow16.png'); }
+tr.online>td.cluster-name { background-image: url('images/green16.png'); }
+tr.offline>td.instance-name { background-image: url('images/red16.png'); }
+tr.alert>td.instance-name { background-image: url('images/yellow16.png'); }
+tr.online>td.instance-name { background-image: url('images/green16.png'); }
+
+body.host-overview div.item-list-container {
+	top: 10em;
+}

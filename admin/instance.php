@@ -14,7 +14,7 @@ class ClusterInstanceView extends ClusterAdminPage
 		{
 			return $this->error(Error::OBJECT_NOT_FOUND);
 		}
-		$this->pageTitle = $this->object['title'];
+		$this->title = $this->object['title'];
 		$this->request->addCrumb(array('name' => $this->object['title'], 'link' => $this->request->pageUri . '-/' . $this->cluster['name'] . '/' . $inst), 'instance');
 		return true;
 	}
@@ -22,7 +22,6 @@ class ClusterInstanceView extends ClusterAdminPage
 	protected function assignTemplate()
 	{
 		parent::assignTemplate();
-		$this->vars['page_title'] = $this->object['title'];
 		$this->vars['cluster'] = $this->cluster;
 		$this->setActiveSourceListEntry('clusters', $this->cluster['name'], $this->object['name']);
 	}

@@ -60,31 +60,125 @@ class ClusterModel extends Model
 	
 	public function clusterStatus($cluster)
 	{
+		$fs = array();
 		if(!defined('HEARTBEAT_IRI'))
 		{
-			return array('tag' => 'unknown', 'description' => 'Unknown');
+			return array('tag' => 'unknown', 'description' => 'Unknown', 'monfs' => $fs);
 		}
 		require_once(APPS_ROOT . 'heartbeat/model.php');
 		if(!$this->heartbeat) $this->heartbeat = HeartbeatModel::getInstance();
 		$instances = $this->instancesInCluster($cluster);
 		$online = 0;
+		$offline = 0;
+		$alert = 0;
 		$now = time();
 		foreach($instances as $inst)
 		{
+			$status = $this->instanceStatus($inst['name'], $cluster);
+			if(!$status) continue;
+			if($status['tag'] == 'offline')
+			{
+				$offline++;
+			}
+			else if($status['tag'] == 'online')
+			{
+				$online++;
+			}
+			else if($status['tag'] == 'alert')
+			{
+				$alert++;
+			}
+			if(isset($status['monfs']))
+			{
+				foreach($status['monfs'] as $k => $mfs)
+				{
+					$fs[$k] = $mfs;
+				}
+			}
+/*			$host = $this->host($inst['host']);
 			$status = $this->heartbeat->lastPulse($inst['host']);
 			if(!$status) continue;
 			if($status['unixtime'] + CLUSTER_HEARTBEAT_THRESHOLD < $now) continue;
-			$online++;
+			$online++; */
 		}
 		if(!$online)
 		{
-			return array('tag' => 'offline', 'description' => 'No instances are online');
+			return array('tag' => 'offline', 'description' => 'No instances are online', 'monfs' => $fs);
 		}
 		if($online == count($instances))
 		{
-			return array('tag' => 'online', 'description' => 'All instances are online');
+			return array('tag' => 'online', 'description' => 'All instances are online', 'monfs' => $fs);
 		}
-		return array('tag' => 'alert', 'description' => 'Some instances are offline');
+		return array('tag' => 'alert', 'description' => 'Some instances are offline', 'monfs' => $fs);
+	}
+	
+	public function instanceStatus($instance, $clusterName = null)
+	{
+		if(!defined('HEARTBEAT_IRI'))
+		{
+			return array('tag' => 'unknown', 'status' => 'Unknown', 'timestamp' => null, 'unixtime' => null);
+		}
+		require_once(APPS_ROOT . 'heartbeat/model.php');
+		if(!$this->heartbeat) $this->heartbeat = HeartbeatModel::getInstance();		
+		$inst = $this->instanceInCluster($instance, $clusterName);
+		$info = $this->heartbeat->lastPulse($inst['host']);
+		$host = $this->host($inst['host']);		
+		if(!$info || $info['unixtime'] + CLUSTER_HEARTBEAT_THRESHOLD < time())
+		{
+			$info['tag'] = 'offline';
+			$info['status'] = 'This instance is currently offline';
+		}
+		else
+		{
+			$info['tag'] = 'online';
+			$info['status'] = 'Online';
+		}
+		if(!isset($info['timestamp']))
+		{
+			$info['timestamp'] = $info['unixtime'] = null;
+		}
+		$info['monfs'] = array();
+		if(isset($info['mib']['fs']))
+		{
+			foreach($host['fs'] as $mfs)
+			{
+				foreach($info['mib']['fs'] as $hfs)
+				{
+					if(isset($mfs['mountpoint']) && !strcmp($mfs['mountpoint'], $hfs['mountpoint']))
+					{
+						$hfs['host'] = $inst['host'];
+						$info['monfs'][$inst['host'] . ':' . $hfs['mountpoint']] = $hfs;
+					}
+				}
+			}
+		}
+		return $info;
+	}
+	
+	public function hostStatus($host)
+	{
+		if(!defined('HEARTBEAT_IRI'))
+		{
+			return array('tag' => 'unknown', 'status' => 'Unknown', 'timestamp' => null, 'unixtime' => null);
+		}
+		require_once(APPS_ROOT . 'heartbeat/model.php');
+		if(!$this->heartbeat) $this->heartbeat = HeartbeatModel::getInstance();		
+		$info = $this->heartbeat->lastPulse($host);
+		if(!$info || $info['unixtime'] + CLUSTER_HEARTBEAT_THRESHOLD < time())
+		{
+			$info['tag'] = 'offline';
+			$info['status'] = 'This instance is currently offline';
+		}
+		else
+		{
+			$info['tag'] = 'online';
+			$info['status'] = 'Online';
+		}
+		if(!isset($info['timestamp']))
+		{
+			$info['timestamp'] = $info['unixtime'] = null;
+		}
+		return $info;		
 	}
 }
 
@@ -132,6 +226,12 @@ class ClusterFileModel extends ClusterModel
 		return null;
 	}
 	
+	public function host($name)
+	{
+		if(!isset($this->hosts[$name])) return null;
+		return $this->hosts[$name];
+	}
+	
 	public function clusters()
 	{
 		return $this->clusters;
@@ -175,6 +275,42 @@ class ClusterFileModel extends ClusterModel
 	protected function readClustersFromFile($path)
 	{
 		$xml = simplexml_load_file($path);
+		foreach($xml->host as $host)
+		{
+			$info = array();
+			$attrs = $host->attributes();
+			foreach($attrs as $a)
+			{
+				$k = $a->getName();
+				$v = trim($a);
+				$info[$k] = $v;
+			}
+			$info['fs'] = array();
+			foreach($host->fs as $fs)
+			{
+				$fsinfo = array();
+				$attrs = $fs->attributes();
+				foreach($attrs as $a)
+				{
+					$k = $a->getName();
+					$v = trim($a);
+					$fsinfo[$k] = $v;
+				}
+				$info['fs'][] = $fsinfo;	
+			}
+			if(!isset($info['name']))
+			{
+				trigger_error('Skipping defined host with no name', E_USER_WARNING);
+				continue;
+			}		
+			$info['instances'] = array();
+			if(!isset($info['title'])) $info['title'] = $info['name'];
+			if(isset($this->hosts[$info['name']]))
+			{
+				trigger_error('Cluster ' . $info['name'] . ' is defined more than once; the most recent definition will be used', E_USER_NOTICE);				
+			}
+			$this->hosts[$info['name']] = $info;
+		}
 		foreach($xml->cluster as $cluster)
 		{
 			$info = array();
@@ -217,7 +353,7 @@ class ClusterFileModel extends ClusterModel
 					trigger_error('Instance ' . $iinfo['name'] . ' is defined more than once; the most recent definition will be used', E_USER_NOTICE);
 				}
 				if(!isset($iinfo['host'])) $iinfo['host'] = $iinfo['name'];
-				if(!isset($this->hosts[$iinfo['host']])) $this->hosts[$iinfo['host']] = array('name' => $iinfo['host'], 'instances' => array());
+				if(!isset($this->hosts[$iinfo['host']])) $this->hosts[$iinfo['host']] = array('name' => $iinfo['host'], 'title' => $iinfo['host'], 'instances' => array(), 'fs' => array());
 				$this->hosts[$iinfo['host']]['instances'][] = $iinfo['name'];
 				$iinfo['cluster'] = $info['name'];
 				$this->inst[$iinfo['name']] = $iinfo;

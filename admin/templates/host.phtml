@@ -1,37 +1,21 @@
 <?php require($templates_path . 'admin/header.php'); ?>
 <h2><?php e($object['title']); ?></h2>
-
-<div class="item-list-container">
-
-	<div class="item-list">
-		<table>
-			<thead>
-				<tr>
-					<th scope="col">Name</th>
-					<th scope="col">Host</th>
-					<th scope="col">Last checked in</th>
-					<th scope="col">Status</th>
-				</tr>
-			</thead>
-			<tbody>
-			<?php
-			$odd = true;
-			foreach($instances as $inst)
-			{
-				echo '<tr class="' . ($odd ? 'odd ':'even ') . _e($inst['tag']) . '">';
-				echo '<td class="instance-name">' . _e($inst['name']) . '</td>';
-				echo '<td><a href="' . _e($request->base . 'host/-/' . $inst['host']) . '">' . _e($inst['host']) . '</a></td>';
-				echo '<td>' . _e($inst['last-checkin']) . '</td>';
-				echo '<td>' . _e($inst['status']) . '</td>';
-				echo '</tr>';
-				$odd = !$odd;
-			}		
-			?>
-			</tbody>
-		</table>
+<?php if(isset($object['mib']['uname']['nodename']))
+{
+	echo '<p class="nodename">' . _e($object['mib']['uname']['nodename']) . '</p>';
+}
+?>
 <?php
 
-if(isset($object['monfs']) && count($object['monfs']))
+if(isset($object['mib']['uname']))
+{
+	echo '<div class="uname">';
+	echo '<h3>' . _e($object['mib']['uname']['opsys'] . ' ' . $object['mib']['uname']['release']) . '</h3>';
+	echo '<p>' . _e($object['mib']['uname']['version'] . ' — ' . $object['mib']['uname']['machine']) . '</p>';
+	echo '</div>';
+}
+
+if(isset($object['mib']['fs']))
 {
 
 function fromblocks($n)
@@ -51,11 +35,13 @@ function fromblocks($n)
 	return $n . '&nbsp;Ki';
 }
 
-?><br />
+?>
+<div class="item-list-container">
+
+	<div class="item-list">
 		<table>
 			<thead>
 				<tr>
-					<th scope="col">Host</th>
 					<th scope="col">Special</th>
 					<th scope="col">Total</th>
 					<th scope="col">Used</th>
@@ -67,10 +53,9 @@ function fromblocks($n)
 			<tbody>
 			<?php
 			$odd = true;
-			foreach($object['monfs'] as $fs)
+			foreach($object['mib']['fs'] as $fs)
 			{
 				echo '<tr class="' . ($odd ? 'odd ':'even ') . '">';
-				echo '<td>' . _e($fs['host']) . '</td>';
 				echo '<td>' . _e($fs['device']) . '</td>';
 				echo '<td>' . fromblocks($fs['total']) . '</td>';
 				echo '<td>' . fromblocks($fs['used']) . '</td>';
@@ -83,11 +68,9 @@ function fromblocks($n)
 			?>
 			</tbody>
 		</table>
-
+	</div>
+</div>
 <?php
 }
 ?>
-	</div>
-</div>
-
 <?php require($templates_path . 'admin/footer.php'); ?>

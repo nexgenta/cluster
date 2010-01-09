@@ -1,35 +1,98 @@
-<?php require($templates_path . 'admin/header.php'); ?>
+<?php require($templates_path . 'admin/header.php');
 
-<h2>Clusters</h2>
-<div class="item-list-container">
+function fromblocks($n)
+{
+	if($n >= 1048576)
+	{
+		return round($n / 1048576) . '&nbsp;Gi';
+	}
+	if($n >= 1024)
+	{
+		return round($n / 1024) . '&nbsp;Mi';
+	}
+	if(!$n)
+	{
+		return 0;
+	}
+	return $n . '&nbsp;Ki';
+}
 
-	<div class="item-list">
-		<table>
-			<thead>
-				<tr>
-					<th scope="col">Name</th>
-					<th scope="col">Title</th>
-					<th scope="col">Status</th>
-				</tr>
-			</thead>
-			<tbody>
-			<?php
-			$odd = true;
-			foreach($clusters as $cluster)
-			{
-				echo '<tr class="' . ($odd ? 'odd ':'even ') . $cluster['class'] . '">';
-				echo '<td class="cluster-name"><a href="' . $request->base . '-/' . _e($cluster['name']) . '">' . _e($cluster['name']) . '</a></td>';
-				echo '<td>' . _e($cluster['title']) . '</td>';
-				echo '<td>' . _e($cluster['status']) . '</td>';
-				echo '</tr>';
-				$odd = !$odd;
-			}		
-			?>
-			</tbody>
-		</table>
+?>
+
+<div class="tabs">
+	<ul>
+		<li class="active"><a href="#clusters">Overview</a></li>
+		<li><a href="#fs">Filesystems</a></li>
+	</ul>
+	
+	<div id="clusters" class="active">
+		<div class="item-list-container">
+			<div class="item-list">
+				<table>
+					<thead>
+						<tr>
+							<th scope="col">Name</th>
+							<th scope="col">Title</th>
+							<th scope="col">Status</th>
+						</tr>
+					</thead>
+					<tbody>
+					<?php
+					$odd = true;
+					foreach($clusters as $cluster)
+					{
+						echo '<tr class="' . ($odd ? 'odd ':'even ') . $cluster['class'] . '">';
+						echo '<td class="cluster-name"><a href="' . $request->base . '-/' . _e($cluster['name']) . '">' . _e($cluster['name']) . '</a></td>';
+						echo '<td>' . _e($cluster['title']) . '</td>';
+						echo '<td>' . _e($cluster['status']) . '</td>';
+						echo '</tr>';
+						$odd = !$odd;
+					}		
+					?>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+		
+	<div id="fs">
+		<div class="item-list-container">
+			<div class="item-list">
+				<table>
+					<thead>
+						<tr>
+							<th scope="col">Host</th>
+							<th scope="col">Special</th>
+							<th scope="col">Total</th>
+							<th scope="col">Used</th>
+							<th scope="col">Available</th>
+							<th scope="col">Capacity</th>
+							<th scope="col">Mountpoint</th>
+						</tr>
+					</thead>
+					<tbody>
+<?php
+$odd = true;
+foreach($fs as $afs)
+{
+	echo '<tr class="' . ($odd ? 'odd ':'even ') . '">';
+	echo '<td>' . _e($afs['host']) . '</td>';
+	echo '<td>' . _e($afs['device']) . '</td>';
+	echo '<td>' . fromblocks($afs['total']) . '</td>';
+	echo '<td>' . fromblocks($afs['used']) . '</td>';
+	echo '<td>' . fromblocks($afs['available']) . '</td>';
+	echo '<td>' . _e($afs['capacity']) . '%</td>';
+	echo '<td>' . _e($afs['mountpoint']) . '</td>';
+	echo '</tr>';
+	$odd = !$odd;
+}
+?>
+					</tbody>
+				</table>
+			</div>
+		</div>
 	</div>
 
 </div>
-
 
 <?php require($templates_path . 'admin/footer.php'); ?>
