@@ -13,6 +13,8 @@ require_once(dirname(__FILE__) . '/model.php');
  * cluster:///
  */
  
+if(!defined('CLUSTERFS_IRI')) define('CLUSTERFS_IRI', null);
+
 class ClusterFS extends Model
 {
 	protected $cluster;
