@@ -37,7 +37,7 @@ class ClusterModuleInstall extends ModuleInstaller
 	{
 //		fwrite($file, "\$SETUP_MODULES[] = array('name' => 'clusterfs', 'file' => 'module.php', 'class' => 'ClusterFSModule');\n");
 		fwrite($file, "\$CLI_ROUTES['cluster'] = array('class' => 'ClusterCLI', 'name' => 'cluster', 'file' => 'cli.php', 'description' => 'Cluster management commands');\n");
-		fwrite($file, "\$AUTOLOAD['clusterfshandler'] = APPS_ROOT . 'cluster/clusterfs.php';\n");
+		fwrite($file, "\$AUTOLOAD['clusterfshandler'] = MODULES_ROOT . 'cluster/clusterfs.php';\n");
 		fwrite($file, "\$VFS['cluster'] = 'ClusterFSHandler';\n");
 		fwrite($file, "\$ADMIN_ROUTES['cluster'] = array('class' => 'ClusterAdminApp', 'file' => 'admin/app.php', 'adjustBase' => true, 'require' => 'com.nexgenta.admin.cluster', 'title' => 'Clusters', 'linkClass' => 'clusters');\n");
 		fwrite($file, "\n");
