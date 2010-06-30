@@ -35,6 +35,8 @@ if(!defined('INSTANCE_NAME')) define('INSTANCE_NAME', php_uname('n'));
 
 if(!defined('CLUSTER_HEARTBEAT_THRESHOLD')) define('CLUSTER_HEARTBEAT_THRESHOLD', 60);
 
+if(!defined('CLUSTER_IRI')) define('CLUSTER_IRI', null);
+
 class ClusterModel extends Model
 {
 	public $writeable = true;
@@ -179,6 +181,16 @@ class ClusterModel extends Model
 			$info['timestamp'] = $info['unixtime'] = null;
 		}
 		return $info;		
+	}
+	
+	public function clusters()
+	{
+		return array();
+	}
+
+	public function hosts()
+	{
+		return array();
 	}
 }
 

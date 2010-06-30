@@ -36,10 +36,18 @@ class ClusterModuleInstall extends ModuleInstaller
 	public function writeAppConfig($file)
 	{
 //		fwrite($file, "\$SETUP_MODULES[] = array('name' => 'clusterfs', 'file' => 'module.php', 'class' => 'ClusterFSModule');\n");
+
 		fwrite($file, "\$CLI_ROUTES['cluster'] = array('class' => 'ClusterCLI', 'name' => 'cluster', 'file' => 'cli.php', 'description' => 'Cluster management commands');\n");
+
 		fwrite($file, "\$AUTOLOAD['clusterfshandler'] = MODULES_ROOT . 'cluster/clusterfs.php';\n");
+
 		fwrite($file, "\$VFS['cluster'] = 'ClusterFSHandler';\n");
-		fwrite($file, "\$ADMIN_ROUTES['cluster'] = array('class' => 'ClusterAdminApp', 'file' => 'admin/app.php', 'adjustBase' => true, 'require' => 'com.nexgenta.admin.cluster', 'title' => 'Clusters', 'linkClass' => 'clusters');\n");
+
+		fwrite($file, "\$ADMIN_ROUTES['cluster'] = array('class' => 'ClusterAdminApp', 'file' => 'admin/app.php', 'adjustBase' => true, 'require' => 'com.nexgenta.admin.cluster', 'title' => 'Clusters', 'linkClass' => 'clusters', 'routes' => array(\n" .
+			"\t'__NONE__' => array('class' => 'ClusterOverview', 'file' => 'admin/overview.php', 'require' => 'com.nexgenta.admin.cluster'),\n" .
+			"\t'host' => array('class' => 'ClusterHost', 'file' => 'admin/host.php', 'require' => 'com.nexgenta.admin.cluster'),\n" .
+			"));\n");
+
 		fwrite($file, "\n");
 	}
 	
@@ -54,4 +62,10 @@ class ClusterModuleInstall extends ModuleInstaller
 		$this->writePlaceholderDBIri($file, 'CLUSTERFS_IRI');
 		fwrite($file, "\n");
 	}
+
+	public function createLinks()
+	{
+		$this->linkTemplates('admin/templates', 'cluster-admin');
+	}
+
 }

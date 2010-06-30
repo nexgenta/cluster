@@ -1,6 +1,6 @@
 <?php
 
-require_once(APPS_ROOT . 'admin/router.php');
+require_once(MODULES_ROOT . 'admin/router.php');
 require_once(dirname(__FILE__) . '/../model.php');
 
 class ClusterAdminApp extends App
@@ -8,13 +8,6 @@ class ClusterAdminApp extends App
 	public $skin = 'cluster-admin';
 	protected $crumbName = 'Clusters';
 	protected $crumbClass = 'clusters';
-	
-	public function __construct()
-	{
-		parent::__construct();
-		$this->routes['__NONE__'] = array('class' => 'ClusterOverview', 'file' => 'admin/overview.php', 'require' => 'com.nexgenta.admin.cluster');
-		$this->routes['host'] = array('class' => 'ClusterHost', 'file' => 'admin/host.php', 'require' => 'com.nexgenta.admin.cluster');
-	}
 }
 
 class ClusterAdminPage extends AdminPage
